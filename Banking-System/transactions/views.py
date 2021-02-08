@@ -1,5 +1,6 @@
 from dateutil.relativedelta import relativedelta
-
+from django.conf import settings
+from django.core.mail import send_mail
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
@@ -18,7 +19,6 @@ import csv
 import datetime
 
 
-
 class TransactionRepostView(LoginRequiredMixin, ListView):
     template_name = 'transactions/transaction_report.html'
     model = Transaction
@@ -26,7 +26,10 @@ class TransactionRepostView(LoginRequiredMixin, ListView):
 
     def get(self, request, *args, **kwargs):
         form = TransactionDateRangeForm(request.GET or None)
-        #print(form)
+        trans = Transaction.objects.filter(id = request.user.id)
+        print(trans.values())
+        print(request.user.id)
+        print(request.session.get('id'))
         if form.is_valid():
             self.form_data = form.cleaned_data
 
@@ -53,8 +56,6 @@ class TransactionRepostView(LoginRequiredMixin, ListView):
             'account': self.request.user.account,
             'form': TransactionDateRangeForm(self.request.GET or None)
         })
-        q=Transaction
-        print(q)
 
 
         return context
@@ -93,6 +94,7 @@ class DepositMoneyView(TransactionCreateMixin):
     def form_valid(self, form):
         amount = form.cleaned_data.get('amount')
         account = self.request.user.account
+        email_user = self.request.user
 
         if not account.initial_deposit_date:
             now = timezone.now()
@@ -115,6 +117,14 @@ class DepositMoneyView(TransactionCreateMixin):
             ]
         )
 
+        send_mail(
+            'Deposit Money',
+            'thank u for depositing amount {} and Updated balance is {} '.format(amount,self.request.user.account.balance),
+            settings.EMAIL_HOST_USER,
+            [self.request.user],
+            fail_silently=False,
+        )
+
         messages.success(
             self.request,
             f'{amount}$ was deposited to your account successfully'
@@ -133,9 +143,18 @@ class WithdrawMoneyView(TransactionCreateMixin):
 
     def form_valid(self, form):
         amount = form.cleaned_data.get('amount')
+        print(self.request.user)
 
         self.request.user.account.balance -= form.cleaned_data.get('amount')
         self.request.user.account.save(update_fields=['balance'])
+
+        send_mail(
+            'Withdraw Money',
+            'thank u for amount {} Withdraw  and updated balance is {}'.format(amount,self.request.user.account.balance),
+            settings.EMAIL_HOST_USER,
+            [self.request.user],
+            fail_silently=False,
+        )
 
         messages.success(
             self.request,
@@ -145,13 +164,25 @@ class WithdrawMoneyView(TransactionCreateMixin):
         return super().form_valid(form)
 
 
-'''def export_csv(request):
+def export_csv(request):
+    print('*'*20)
+    User_id = (request.user.id)
+    print(request.session.get('account_id'))
+    print('*' * 20)
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = "attachment"; filename = statement+str(datetime.datetime.now())+'.csv'
+    response['Content-Disposition'] = "attachment"; filename = 'statement'+str(datetime.datetime.now())+'.xlsx'
     write= csv.writer(response)
     write.writerow(['TRANSACTION TYPE','DATE','AMOUNT','BALANCE AFTER TRANSACTION'])
-    expenses = queryset.filter(owner=request.user)
+    expenses = Transaction.objects.filter(account_id=User_id)
+    print(expenses.values())
+    # expenses = queryset.filter(owner=request.user)
 
     for expense in expenses:
-        writer.writerow(expense.transaction_type,expense.timestamp,expense.amount,expense.balance_after_transaction)
-    return response'''
+        if expense.transaction_type==1:
+            write.writerow(['DEPOSIT', expense.timestamp, expense.amount, expense.balance_after_transaction])
+            print('DEPOSIT')
+        elif expense.transaction_type==2:
+            print('WITHDRAW')
+            write.writerow(['WITHDRAW', expense.timestamp, expense.amount, expense.balance_after_transaction])
+        #write.writerow([expense.transaction_type, expense.timestamp, expense.amount, expense.balance_after_transaction])
+    return response
