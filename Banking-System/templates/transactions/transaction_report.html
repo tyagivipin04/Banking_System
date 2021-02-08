@@ -8,11 +8,11 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 {% endblock %}
-
+<a href="export_csv/" class = "btn btn-secondary">Export CSV</a>
 {% block content %}
     <h1 class="font-mono font-bold text-3xl text-center pb-5 pt-10">Transaction Report</h1>
     <hr />
-<a href="/" class = "btn btn-secondary">Export CSV</a>
+<a href="export_csv/" class = "btn btn-secondary">Export CSV</a>
     <form method="get">
         <div class="mt-10 h-10 pl-3 pr-2 bg-white border rounded-md border-gray-500 flex justify-between items-center relative">
             <input type="search" name="daterange" id="search" placeholder="Filter using date range" value="{{ request.GET.daterange }}" class="appearance-none w-full outline-none focus:outline-none active:outline-none" />
